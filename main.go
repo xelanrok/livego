@@ -161,7 +161,7 @@ func main() {
 	apps := configure.Applications{}
 	configure.Config.UnmarshalKey("server", &apps)
 	for _, app := range apps {
-		stream := rtmp.NewRtmpStream()
+		stream := rtmp.NewRtmpStream(nil)
 		var hlsServer *hls.Server
 		if app.Hls {
 			hlsServer = startHls()

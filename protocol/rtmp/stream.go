@@ -19,11 +19,13 @@ var (
 
 type RtmpStream struct {
 	streams *sync.Map //key
+	onClose func(string)
 }
 
-func NewRtmpStream() *RtmpStream {
+func NewRtmpStream(_onClose func(string)) *RtmpStream {
 	ret := &RtmpStream{
 		streams: &sync.Map{},
+		onClose: _onClose,
 	}
 	go ret.CheckAlive()
 	return ret
@@ -39,13 +41,13 @@ func (rs *RtmpStream) HandleReader(r av.ReadCloser) {
 		stream.TransStop()
 		id := stream.ID()
 		if id != EmptyID && id != info.UID {
-			ns := NewStream()
+			ns := NewStream(rs.onClose)
 			stream.Copy(ns)
 			stream = ns
 			rs.streams.Store(info.Key, ns)
 		}
 	} else {
-		stream = NewStream()
+		stream = NewStream(rs.onClose)
 		rs.streams.Store(info.Key, stream)
 		stream.info = info
 	}
@@ -61,7 +63,7 @@ func (rs *RtmpStream) HandleWriter(w av.WriteCloser) {
 	item, ok := rs.streams.Load(info.Key)
 	if !ok {
 		log.Debugf("HandleWriter: not found create new info[%v]", info)
-		s = NewStream()
+		s = NewStream(rs.onClose)
 		rs.streams.Store(info.Key, s)
 		s.info = info
 	} else {
@@ -93,6 +95,7 @@ type Stream struct {
 	r       av.ReadCloser
 	ws      *sync.Map
 	info    av.Info
+	onClose func(url string)
 }
 
 type PackWriterCloser struct {
@@ -104,10 +107,11 @@ func (p *PackWriterCloser) GetWriter() av.WriteCloser {
 	return p.w
 }
 
-func NewStream() *Stream {
+func NewStream(_onClose func(url string)) *Stream {
 	return &Stream{
-		cache: cache.NewCache(),
-		ws:    &sync.Map{},
+		cache:   cache.NewCache(),
+		ws:      &sync.Map{},
+		onClose: _onClose,
 	}
 }
 
@@ -351,6 +355,7 @@ func (s *Stream) TransStart() {
 				if err = v.w.Write(&newPacket); err != nil {
 					log.Debugf("[%s] write packet error: %v, remove", v.w.Info(), err)
 					s.ws.Delete(key)
+
 				}
 			}
 			return true
@@ -399,6 +404,8 @@ func (s *Stream) closeInter() {
 	if s.r != nil {
 		s.StopStaticPush()
 		log.Debugf("[%v] publisher closed", s.r.Info())
+
+		s.onClose(s.r.Info().URL)
 	}
 
 	s.ws.Range(func(key, val interface{}) bool {
