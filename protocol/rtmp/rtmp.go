@@ -133,11 +133,13 @@ func (s *Server) handleConn(conn *core.Conn) error {
 		return nil
 	}
 
-	if ret := configure.CheckAppName(appname); !ret {
-		err := fmt.Errorf("application name=%s is not configured", appname)
-		conn.Close()
-		log.Error("CheckAppName err: ", err)
-		return err
+	if configure.Config.GetBool("rtmp_check_app_name") {
+		if ret := configure.CheckAppName(appname); !ret {
+			err := fmt.Errorf("application name=%s is not configured", appname)
+			conn.Close()
+			log.Error("CheckAppName err: ", err)
+			return err
+		}
 	}
 
 	log.Debugf("handleConn: IsPublisher=%v", connServer.IsPublisher())
