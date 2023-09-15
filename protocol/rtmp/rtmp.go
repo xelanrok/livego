@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"reflect"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/gwuhaolin/livego/utils/uid"
@@ -50,7 +51,7 @@ func (c *Client) Dial(url string, method string) error {
 		log.Debugf("client Dial call NewVirWriter url=%s, method=%s", url, method)
 		c.handler.HandleWriter(writer)
 	} else if method == av.PLAY {
-		reader := NewVirReader(connClient)
+		reader := NewVirReader(connClient, func(url string) {})
 		log.Debugf("client Dial call NewVirReader url=%s, method=%s", url, method)
 		c.handler.HandleReader(reader)
 		if c.getter != nil {
@@ -66,14 +67,20 @@ func (c *Client) GetHandle() av.Handler {
 }
 
 type Server struct {
-	handler av.Handler
-	getter  av.GetWriter
+	handler             av.Handler
+	getter              av.GetWriter
+	acceptNewConnection func(url string) bool
+	onClose             func(url string)
 }
 
-func NewRtmpServer(h av.Handler, getter av.GetWriter) *Server {
+func NewRtmpServer(h av.Handler, getter av.GetWriter,
+	_acceptNewConnection func(url string) bool,
+	_onClose func(url string)) *Server {
 	return &Server{
-		handler: h,
-		getter:  getter,
+		handler:             h,
+		getter:              getter,
+		acceptNewConnection: _acceptNewConnection,
+		onClose:             _onClose,
 	}
 }
 
@@ -97,12 +104,20 @@ func (s *Server) Serve(listener net.Listener) (err error) {
 	}
 }
 
+func (s *Server) GetPulishers() *sync.Map {
+	if h, valid := s.handler.(*RtmpStream); valid {
+		return h.GetStreams()
+	}
+	return nil
+}
+
 func (s *Server) handleConn(conn *core.Conn) error {
 	if err := conn.HandshakeServer(); err != nil {
 		conn.Close()
 		log.Error("handleConn HandshakeServer err: ", err)
 		return err
 	}
+
 	connServer := core.NewConnServer(conn)
 
 	if err := connServer.ReadMsg(); err != nil {
@@ -111,7 +126,12 @@ func (s *Server) handleConn(conn *core.Conn) error {
 		return err
 	}
 
-	appname, name, _ := connServer.GetInfo()
+	appname, name, url := connServer.GetInfo()
+
+	if !s.acceptNewConnection(url) {
+		conn.Close()
+		return nil
+	}
 
 	if ret := configure.CheckAppName(appname); !ret {
 		err := fmt.Errorf("application name=%s is not configured", appname)
@@ -143,8 +163,9 @@ func (s *Server) handleConn(conn *core.Conn) error {
 		if pushlist, ret := configure.GetStaticPushUrlList(appname); ret && (pushlist != nil) {
 			log.Debugf("GetStaticPushUrlList: %v", pushlist)
 		}
-		reader := NewVirReader(connServer)
+		reader := NewVirReader(connServer, s.onClose)
 		s.handler.HandleReader(reader)
+
 		log.Debugf("new publisher: %+v", reader.Info())
 
 		if s.getter != nil {
@@ -283,7 +304,6 @@ func (v *VirWriter) DropPacket(pktQue chan *av.Packet, info av.Info) {
 	log.Debug("packet queue len: ", len(pktQue))
 }
 
-//
 func (v *VirWriter) Write(p *av.Packet) (err error) {
 	err = nil
 
@@ -371,15 +391,19 @@ type VirReader struct {
 	demuxer    *flv.Demuxer
 	conn       StreamReadWriteCloser
 	ReadBWInfo StaticsBW
+	onClose    func(url string)
+	CreatedAt  time.Time
 }
 
-func NewVirReader(conn StreamReadWriteCloser) *VirReader {
+func NewVirReader(conn StreamReadWriteCloser, _onClose func(url string)) *VirReader {
 	return &VirReader{
 		Uid:        uid.NewId(),
 		conn:       conn,
 		RWBaser:    av.NewRWBaser(time.Second * time.Duration(writeTimeout)),
 		demuxer:    flv.NewDemuxer(),
 		ReadBWInfo: StaticsBW{0, 0, 0, 0, 0, 0, 0, 0},
+		onClose:    _onClose,
+		CreatedAt:  time.Now().UTC(),
 	}
 }
 
@@ -456,5 +480,7 @@ func (v *VirReader) Info() (ret av.Info) {
 
 func (v *VirReader) Close(err error) {
 	log.Debug("publisher ", v.Info(), "closed: "+err.Error())
+	_, _, url := v.conn.GetInfo()
+	v.onClose(url)
 	v.conn.Close(err)
 }
