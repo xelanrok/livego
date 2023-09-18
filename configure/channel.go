@@ -60,7 +60,7 @@ func (r *RoomKeysType) SetKey(channel string) (key string, err error) {
 		}
 	}
 
-	if k, found := r.localCache.Get(key); found {
+	if k, found := r.localCache.Get(channel); found {
 		key = k.(string)
 		return
 	}
