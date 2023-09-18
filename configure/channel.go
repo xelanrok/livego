@@ -60,6 +60,11 @@ func (r *RoomKeysType) SetKey(channel string) (key string, err error) {
 		}
 	}
 
+	if k, found := r.localCache.Get(key); found {
+		key = k.(string)
+		return
+	}
+
 	for {
 		key = uid.RandStringRunes(48)
 		if _, found := r.localCache.Get(key); !found {
