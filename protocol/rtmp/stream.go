@@ -68,7 +68,7 @@ func (rs *RtmpStream) HandleWriter(w av.WriteCloser, isClient bool) {
 		s.info = info
 	} else {
 		s = item.(*Stream)
-		s.AddWriter(w)
+		s.AddWriter(w, isClient)
 		if isClient && s.firstConnectionAt == nil {
 			t := time.Now().UTC()
 			s.firstConnectionAt = &t
@@ -104,8 +104,9 @@ type Stream struct {
 }
 
 type PackWriterCloser struct {
-	init bool
-	w    av.WriteCloser
+	init     bool
+	w        av.WriteCloser
+	IsClient bool
 }
 
 func (p *PackWriterCloser) GetWriter() av.WriteCloser {
@@ -145,7 +146,7 @@ func (s *Stream) Copy(dst *Stream) {
 		v := val.(*PackWriterCloser)
 		s.ws.Delete(key)
 		v.w.CalcBaseTimestamp()
-		dst.AddWriter(v.w)
+		dst.AddWriter(v.w, v.IsClient)
 		return true
 	})
 }
@@ -155,9 +156,9 @@ func (s *Stream) AddReader(r av.ReadCloser) {
 	go s.TransStart()
 }
 
-func (s *Stream) AddWriter(w av.WriteCloser) {
+func (s *Stream) AddWriter(w av.WriteCloser, _isClient bool) {
 	info := w.Info()
-	pw := &PackWriterCloser{w: w}
+	pw := &PackWriterCloser{w: w, IsClient: _isClient}
 	s.ws.Store(info.UID, pw)
 }
 
