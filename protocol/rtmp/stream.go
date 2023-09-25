@@ -116,8 +116,8 @@ func NewStream(_onClose func(url string)) *Stream {
 	}
 }
 
-func (s *Stream) GetFirstConnectionAt() time.Time {
-	return *s.firstConnectionAt
+func (s *Stream) GetFirstConnectionAt() *time.Time {
+	return s.firstConnectionAt
 }
 
 func (s *Stream) ID() string {
