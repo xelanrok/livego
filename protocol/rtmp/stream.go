@@ -90,12 +90,13 @@ func (rs *RtmpStream) CheckAlive() {
 }
 
 type Stream struct {
-	isStart bool
-	cache   *cache.Cache
-	r       av.ReadCloser
-	ws      *sync.Map
-	info    av.Info
-	onClose func(url string)
+	isStart           bool
+	cache             *cache.Cache
+	r                 av.ReadCloser
+	ws                *sync.Map
+	info              av.Info
+	onClose           func(url string)
+	firstConnectionAt *time.Time
 }
 
 type PackWriterCloser struct {
@@ -113,6 +114,10 @@ func NewStream(_onClose func(url string)) *Stream {
 		ws:      &sync.Map{},
 		onClose: _onClose,
 	}
+}
+
+func (s *Stream) GetFirstConnectionAt() time.Time {
+	return *s.firstConnectionAt
 }
 
 func (s *Stream) ID() string {
@@ -150,6 +155,10 @@ func (s *Stream) AddWriter(w av.WriteCloser) {
 	info := w.Info()
 	pw := &PackWriterCloser{w: w}
 	s.ws.Store(info.UID, pw)
+	if s.firstConnectionAt == nil {
+		t := time.Now().UTC()
+		s.firstConnectionAt = &t
+	}
 }
 
 /*
