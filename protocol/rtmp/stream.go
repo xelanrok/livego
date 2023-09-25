@@ -55,7 +55,7 @@ func (rs *RtmpStream) HandleReader(r av.ReadCloser) {
 	stream.AddReader(r)
 }
 
-func (rs *RtmpStream) HandleWriter(w av.WriteCloser) {
+func (rs *RtmpStream) HandleWriter(w av.WriteCloser, isClient bool) {
 	info := w.Info()
 	log.Debugf("HandleWriter: info[%v]", info)
 
@@ -69,6 +69,10 @@ func (rs *RtmpStream) HandleWriter(w av.WriteCloser) {
 	} else {
 		s = item.(*Stream)
 		s.AddWriter(w)
+		if isClient && s.firstConnectionAt == nil {
+			t := time.Now().UTC()
+			s.firstConnectionAt = &t
+		}
 	}
 }
 
@@ -155,10 +159,6 @@ func (s *Stream) AddWriter(w av.WriteCloser) {
 	info := w.Info()
 	pw := &PackWriterCloser{w: w}
 	s.ws.Store(info.UID, pw)
-	if s.firstConnectionAt == nil {
-		t := time.Now().UTC()
-		s.firstConnectionAt = &t
-	}
 }
 
 /*

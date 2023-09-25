@@ -49,14 +49,14 @@ func (c *Client) Dial(url string, method string) error {
 	if method == av.PUBLISH {
 		writer := NewVirWriter(connClient)
 		log.Debugf("client Dial call NewVirWriter url=%s, method=%s", url, method)
-		c.handler.HandleWriter(writer)
+		c.handler.HandleWriter(writer, false)
 	} else if method == av.PLAY {
 		reader := NewVirReader(connClient, func(url string) {})
 		log.Debugf("client Dial call NewVirReader url=%s, method=%s", url, method)
 		c.handler.HandleReader(reader)
 		if c.getter != nil {
 			writer := c.getter.GetWriter(reader.Info())
-			c.handler.HandleWriter(writer)
+			c.handler.HandleWriter(writer, false)
 		}
 	}
 	return nil
@@ -174,16 +174,16 @@ func (s *Server) handleConn(conn *core.Conn) error {
 			writeType := reflect.TypeOf(s.getter)
 			log.Debugf("handleConn:writeType=%v", writeType)
 			writer := s.getter.GetWriter(reader.Info())
-			s.handler.HandleWriter(writer)
+			s.handler.HandleWriter(writer, false)
 		}
 		if configure.Config.GetBool("flv_archive") {
 			flvWriter := new(flv.FlvDvr)
-			s.handler.HandleWriter(flvWriter.GetWriter(reader.Info()))
+			s.handler.HandleWriter(flvWriter.GetWriter(reader.Info()), false)
 		}
 	} else {
 		writer := NewVirWriter(connServer)
 		log.Debugf("new player: %+v", writer.Info())
-		s.handler.HandleWriter(writer)
+		s.handler.HandleWriter(writer, true)
 	}
 
 	return nil

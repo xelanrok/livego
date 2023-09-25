@@ -109,7 +109,7 @@ type GetWriter interface {
 
 type Handler interface {
 	HandleReader(ReadCloser)
-	HandleWriter(WriteCloser)
+	HandleWriter(WriteCloser, bool)
 }
 
 type Alive interface {
