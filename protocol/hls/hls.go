@@ -67,7 +67,7 @@ func (server *Server) GetWriter(info av.Info) av.WriteCloser {
 	var s *Source
 	v, ok := server.conns.Load(info.Key)
 	if !ok {
-		log.Debug("new hls source")
+		log.Debugf("new hls source %v", info.Key)
 		s = NewSource(info)
 		server.conns.Store(info.Key, s)
 	} else {
