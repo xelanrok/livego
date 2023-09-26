@@ -84,6 +84,10 @@ func (server *Server) getConn(key string) *Source {
 	return v.(*Source)
 }
 
+func (server *Server) GetConn(key string) *Source {
+	return server.getConn(key)
+}
+
 func (server *Server) checkStop() {
 	for {
 		<-time.After(5 * time.Second)
@@ -113,6 +117,7 @@ func (server *Server) handle(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, ErrNoPublisher.Error(), http.StatusForbidden)
 			return
 		}
+		conn.UpdateLastAccess()
 		tsCache := conn.GetCacheInc()
 		if tsCache == nil {
 			http.Error(w, ErrNoPublisher.Error(), http.StatusForbidden)
@@ -138,6 +143,7 @@ func (server *Server) handle(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		tsCache := conn.GetCacheInc()
+		conn.UpdateLastAccess()
 		item, err := tsCache.GetItem(r.URL.Path)
 		if err != nil {
 			log.Debug("GetItem error: ", err)

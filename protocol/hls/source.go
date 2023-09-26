@@ -25,20 +25,21 @@ const (
 
 type Source struct {
 	av.RWBaser
-	seq         int
-	info        av.Info
-	bwriter     *bytes.Buffer
-	btswriter   *bytes.Buffer
-	demuxer     *flv.Demuxer
-	muxer       *ts.Muxer
-	pts, dts    uint64
-	stat        *status
-	align       *align
-	cache       *audioCache
-	tsCache     *TSCacheItem
-	tsparser    *parser.CodecParser
-	closed      bool
-	packetQueue chan *av.Packet
+	seq          int
+	info         av.Info
+	bwriter      *bytes.Buffer
+	btswriter    *bytes.Buffer
+	demuxer      *flv.Demuxer
+	muxer        *ts.Muxer
+	pts, dts     uint64
+	stat         *status
+	align        *align
+	cache        *audioCache
+	tsCache      *TSCacheItem
+	tsparser     *parser.CodecParser
+	closed       bool
+	packetQueue  chan *av.Packet
+	LastAccessAt *time.Time
 }
 
 func NewSource(info av.Info) *Source {
@@ -68,6 +69,11 @@ func NewSource(info av.Info) *Source {
 
 func (source *Source) GetCacheInc() *TSCacheItem {
 	return source.tsCache
+}
+
+func (source *Source) UpdateLastAccess() {
+	ts := time.Now().UTC()
+	source.LastAccessAt = &ts
 }
 
 func (source *Source) DropPacket(pktQue chan *av.Packet, info av.Info) {
