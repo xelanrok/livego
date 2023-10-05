@@ -114,12 +114,15 @@ func (server *Server) handle(w http.ResponseWriter, r *http.Request) {
 		key, _ := server.parseM3u8(r.URL.Path)
 		conn := server.getConn(key)
 		if conn == nil {
+			log.Debugf("No publisher: %v", r.URL.Path)
+
 			http.Error(w, ErrNoPublisher.Error(), http.StatusForbidden)
 			return
 		}
 		conn.UpdateLastAccess()
 		tsCache := conn.GetCacheInc()
 		if tsCache == nil {
+			log.Debugf("No publisher: %v", r.URL.Path)
 			http.Error(w, ErrNoPublisher.Error(), http.StatusForbidden)
 			return
 		}
@@ -139,6 +142,7 @@ func (server *Server) handle(w http.ResponseWriter, r *http.Request) {
 		key, _ := server.parseTs(r.URL.Path)
 		conn := server.getConn(key)
 		if conn == nil {
+			log.Debugf("No publisher: %v", r.URL.Path)
 			http.Error(w, ErrNoPublisher.Error(), http.StatusForbidden)
 			return
 		}
