@@ -135,7 +135,7 @@ func (server *Server) handle(w http.ResponseWriter, r *http.Request) {
 
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.Header().Set("Cache-Control", "no-cache")
-		w.Header().Set("Content-Type", "application/x-mpegURL")
+		w.Header().Set("Content-Type", "application/vnd.apple.mpegurl")
 		w.Header().Set("Content-Length", strconv.Itoa(len(body)))
 		w.Write(body)
 	case ".ts":
@@ -155,7 +155,7 @@ func (server *Server) handle(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Content-Type", "video/mp2ts")
+		w.Header().Set("Content-Type", "video/MP2T")
 		w.Header().Set("Content-Length", strconv.Itoa(len(item.Data)))
 		w.Write(item.Data)
 	}
